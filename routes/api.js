@@ -43,21 +43,27 @@ router.put("/api/workouts/:id", ({ body, params }, res) => {
 // });
 
 router.get('/api/workouts', (req, res) => {
-  console.log("trying to get workouts");
-	Workout.find({})
-    .sort({ day: 1 })
-    .populate("exercises")
-    .then(workouts => {
-      res.json(workouts);
-    })
-    .catch(err => {
-      console.error(err);
-      res.status(400).json(err);
-    });
+	Workout.aggregate([
+    {$match: {} },
+    {
+        "$addFields": {
+            "totalDuration": {
+                "$reduce": {
+                    "input": "$exercises",
+                    "initialValue": 0,
+                    "in": { "$add" : ["$$value", "$$this.duration"] }
+                }
+            }
+        }
+    }
+  ])
+  .exec((err, data) => {  
+    if (err) console.log(err);
+    res.json(data.slice(-7));
+  });
 });
 
 router.get('/api/workouts/range', (req, res) => {
-  console.log("trying to get workout range");
 	Workout.aggregate([
       {$match: {} },
       {
